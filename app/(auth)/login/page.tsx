@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
+import { AuthConfigNotice } from "@/components/auth/auth-config-notice"
 import { createClient } from "@/lib/supabase-browser"
 import {
   buildTrackedClientPath,
@@ -16,6 +17,7 @@ import {
   serializeMarketingAttribution,
   type MarketingAttribution,
 } from "@/lib/marketing-attribution"
+import { isSupabaseConfigured } from "@/lib/site"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -31,9 +33,18 @@ export default function LoginPage() {
   }, [])
 
   const withTracking = (pathname: string) => buildTrackedClientPath(pathname, attribution)
+  const authAvailable = isSupabaseConfigured()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    if (!authAvailable) {
+      toast({
+        title: "Auth indisponivel nesta preview",
+        description: "Configure as variaveis do Supabase no deploy para liberar o login.",
+        variant: "destructive",
+      })
+      return
+    }
     setLoading(true)
     try {
       const supabase = createClient()
@@ -50,6 +61,14 @@ export default function LoginPage() {
   }
 
   async function handleGoogle() {
+    if (!authAvailable) {
+      toast({
+        title: "Google login indisponivel nesta preview",
+        description: "Configure o Supabase e a URL de redirect do deploy para liberar o OAuth.",
+        variant: "destructive",
+      })
+      return
+    }
     setGoogleLoading(true)
     const supabase = createClient()
     const query = serializeMarketingAttribution(attribution)
@@ -68,6 +87,7 @@ export default function LoginPage() {
         <CardDescription>Acesse sua conta para descobrir influenciadores</CardDescription>
       </CardHeader>
       <CardContent>
+        {!authAvailable ? <AuthConfigNotice /> : null}
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail</Label>
@@ -96,7 +116,7 @@ export default function LoginPage() {
               required
             />
           </div>
-          <Button type="submit" className="w-full bg-[#6C63FF] hover:bg-[#6C63FF]/90" disabled={loading}>
+          <Button type="submit" className="w-full bg-[#6C63FF] hover:bg-[#6C63FF]/90" disabled={loading || !authAvailable}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -117,7 +137,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <Button variant="outline" className="w-full" onClick={handleGoogle} disabled={googleLoading}>
+        <Button variant="outline" className="w-full" onClick={handleGoogle} disabled={googleLoading || !authAvailable}>
           {googleLoading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (

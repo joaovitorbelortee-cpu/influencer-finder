@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2, ArrowLeft } from "lucide-react"
+import { AuthConfigNotice } from "@/components/auth/auth-config-notice"
 import { createClient } from "@/lib/supabase-browser"
 import {
   buildTrackedClientPath,
   getClientMarketingAttribution,
   type MarketingAttribution,
 } from "@/lib/marketing-attribution"
+import { isSupabaseConfigured } from "@/lib/site"
 
 export default function ForgotPasswordPage() {
   const { toast } = useToast()
@@ -27,9 +29,18 @@ export default function ForgotPasswordPage() {
   }, [])
 
   const withTracking = (pathname: string) => buildTrackedClientPath(pathname, attribution)
+  const authAvailable = isSupabaseConfigured()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!authAvailable) {
+      toast({
+        title: "Reset indisponivel nesta preview",
+        description: "Configure o Supabase no deploy para liberar a recuperacao de senha.",
+        variant: "destructive",
+      })
+      return
+    }
     setLoading(true)
     try {
       const supabase = createClient()
@@ -77,6 +88,7 @@ export default function ForgotPasswordPage() {
         <CardDescription>Enviaremos um link para redefinir sua senha</CardDescription>
       </CardHeader>
       <CardContent>
+        {!authAvailable ? <AuthConfigNotice /> : null}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail</Label>
@@ -89,7 +101,7 @@ export default function ForgotPasswordPage() {
               required
             />
           </div>
-          <Button type="submit" className="w-full bg-[#6C63FF] hover:bg-[#6C63FF]/90" disabled={loading}>
+          <Button type="submit" className="w-full bg-[#6C63FF] hover:bg-[#6C63FF]/90" disabled={loading || !authAvailable}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

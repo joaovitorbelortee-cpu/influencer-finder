@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
+import { AuthConfigNotice } from "@/components/auth/auth-config-notice"
 import { getFreePlan } from "@/lib/billing"
 import {
   buildTrackedClientPath,
   getClientMarketingAttribution,
   type MarketingAttribution,
 } from "@/lib/marketing-attribution"
+import { isSupabaseConfigured } from "@/lib/site"
 
 const freePlan = getFreePlan()
 
@@ -33,9 +35,18 @@ export default function SignupPage() {
   }, [])
 
   const withTracking = (pathname: string) => buildTrackedClientPath(pathname, attribution)
+  const authAvailable = isSupabaseConfigured()
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
+    if (!authAvailable) {
+      toast({
+        title: "Cadastro indisponivel nesta preview",
+        description: "Configure as variaveis do Supabase no deploy para liberar o cadastro.",
+        variant: "destructive",
+      })
+      return
+    }
     if (password !== confirm) {
       toast({ title: "As senhas nao conferem", variant: "destructive" })
       return
@@ -71,6 +82,7 @@ export default function SignupPage() {
         <CardDescription>Comece gratis com {freePlan.features[0]}</CardDescription>
       </CardHeader>
       <CardContent>
+        {!authAvailable ? <AuthConfigNotice /> : null}
         <form onSubmit={handleSignup} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="name">Nome completo</Label>
@@ -115,7 +127,7 @@ export default function SignupPage() {
               required
             />
           </div>
-          <Button type="submit" className="w-full bg-[#6C63FF] hover:bg-[#6C63FF]/90" disabled={loading}>
+          <Button type="submit" className="w-full bg-[#6C63FF] hover:bg-[#6C63FF]/90" disabled={loading || !authAvailable}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
