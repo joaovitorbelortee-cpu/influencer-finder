@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getUser } from "@/lib/supabase"
 import { prisma } from "@/lib/prisma"
+import { escapeCsvField } from "@/lib/csv"
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getUser()
@@ -46,7 +47,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     r.ai_estimated_value || "",
   ])
 
-  const csv = [header, ...rows].map((row) => row.join(",")).join("\n")
+  const csv = [header, ...rows]
+    .map((row) => row.map((value) => escapeCsvField(value)).join(","))
+    .join("\n")
 
   return new NextResponse(csv, {
     headers: {

@@ -47,6 +47,44 @@ export function SearchResultsClient({ search, initialResults }: SearchResultsCli
 
   const isProcessing = status === "PENDING" || status === "PROCESSING"
 
+  useEffect(() => {
+    if (search.status !== "PENDING") return
+
+    let cancelled = false
+    setStatus("PROCESSING")
+
+    async function startProcessing() {
+      try {
+        const res = await fetch(`/api/searches/${search.id}/process`, {
+          method: "POST",
+        })
+
+        if (!res.ok && !cancelled) {
+          const data = await res.json().catch(() => null)
+          setStatus("FAILED")
+          toast({
+            title: data?.error || "Erro ao iniciar processamento",
+            variant: "destructive",
+          })
+        }
+      } catch {
+        if (!cancelled) {
+          setStatus("FAILED")
+          toast({
+            title: "Erro ao iniciar processamento",
+            variant: "destructive",
+          })
+        }
+      }
+    }
+
+    void startProcessing()
+
+    return () => {
+      cancelled = true
+    }
+  }, [search.id, search.status, toast])
+
   const poll = useCallback(async () => {
     try {
       const res = await fetch(`/api/searches/${search.id}/status`)
@@ -62,6 +100,7 @@ export function SearchResultsClient({ search, initialResults }: SearchResultsCli
   useEffect(() => {
     if (!isProcessing) return
     const interval = setInterval(poll, 3000)
+    void poll()
     return () => clearInterval(interval)
   }, [isProcessing, poll])
 

@@ -4,6 +4,16 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY!)
 }
 
+function getFromAddress(fromName: string) {
+  const configuredAddress = process.env.RESEND_FROM_EMAIL
+
+  if (configuredAddress) {
+    return `${fromName} <${configuredAddress}>`
+  }
+
+  return `${fromName} <onboarding@resend.dev>`
+}
+
 interface SendOutreachEmailParams {
   to: string
   subject: string
@@ -15,7 +25,7 @@ export async function sendOutreachEmail(params: SendOutreachEmailParams) {
   const { to, subject, body, fromName = "Influencer Finder" } = params
 
   const { data, error } = await getResend().emails.send({
-    from: `${fromName} <outreach@${process.env.NEXT_PUBLIC_APP_URL?.replace("https://", "").replace("http://", "") || "influencerfinder.com"}>`,
+    from: getFromAddress(fromName),
     to,
     subject,
     html: `
@@ -47,7 +57,7 @@ export async function sendWelcomeEmail(params: SendWelcomeEmailParams) {
   const { to, name } = params
 
   await getResend().emails.send({
-    from: "Influencer Finder <hello@influencerfinder.com>",
+    from: getFromAddress("Influencer Finder"),
     to,
     subject: "Bem-vindo ao Influencer Finder!",
     html: `
@@ -73,7 +83,7 @@ export async function sendPasswordResetEmail(params: SendPasswordResetParams) {
   const { to, resetLink } = params
 
   await getResend().emails.send({
-    from: "Influencer Finder <noreply@influencerfinder.com>",
+    from: getFromAddress("Influencer Finder"),
     to,
     subject: "Redefinir sua senha",
     html: `

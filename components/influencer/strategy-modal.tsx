@@ -1,16 +1,15 @@
 "use client"
 
+import { useState } from "react"
+import { Loader2, RefreshCw, DollarSign, Target, MessageSquare, Lightbulb } from "lucide-react"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import { Loader2, RefreshCw, DollarSign, Target, MessageSquare, Lightbulb } from "lucide-react"
-import { useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 
 interface StrategyModalProps {
@@ -40,7 +39,12 @@ export function StrategyModal({
 }: StrategyModalProps) {
   const [loading, setLoading] = useState(false)
   const [localStrategy, setLocalStrategy] = useState({
-    strategy, subject, outreachMessage, partnership, estimatedValue, talkingPoints,
+    strategy,
+    subject,
+    outreachMessage,
+    partnership,
+    estimatedValue,
+    talkingPoints,
   })
   const { toast } = useToast()
 
@@ -50,6 +54,7 @@ export function StrategyModal({
       const res = await fetch(`/api/search-results/${resultId}/strategy`, {
         method: "PATCH",
       })
+
       if (res.ok) {
         const data = await res.json()
         setLocalStrategy({
@@ -60,10 +65,10 @@ export function StrategyModal({
           estimatedValue: data.ai_estimated_value,
           talkingPoints: data.ai_talking_points || [],
         })
-        toast({ title: "Estratégia regenerada com sucesso!" })
+        toast({ title: "Estrategia regenerada com sucesso!" })
       }
     } catch {
-      toast({ title: "Erro ao regenerar estratégia", variant: "destructive" })
+      toast({ title: "Erro ao regenerar estrategia", variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -71,103 +76,102 @@ export function StrategyModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-[#6C63FF]" />
-            Estratégia para @{influencerName}
+            <Target className="h-5 w-5 text-[#6C63FF]" />
+            Estrategia para @{influencerName}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5">
-          {/* Strategy */}
-          {localStrategy.strategy && (
+          {localStrategy.strategy ? (
             <div>
-              <h4 className="text-sm font-semibold text-[#1A1A2E] mb-2 flex items-center gap-1.5">
-                <Lightbulb className="w-4 h-4 text-[#6C63FF]" />
-                Análise Estratégica
+              <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-[#1A1A2E]">
+                <Lightbulb className="h-4 w-4 text-[#6C63FF]" />
+                Analise Estrategica
               </h4>
-              <p className="text-sm text-gray-600 leading-relaxed">{localStrategy.strategy}</p>
+              <p className="text-sm leading-relaxed text-gray-600">{localStrategy.strategy}</p>
             </div>
-          )}
+          ) : null}
 
           <Separator />
 
-          {/* Partnership & Value */}
           <div className="grid grid-cols-2 gap-4">
-            {localStrategy.partnership && (
+            {localStrategy.partnership ? (
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
-                  Parceria Sugerida
+                <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                  Parceria sugerida
                 </h4>
                 <p className="text-sm text-gray-700">{localStrategy.partnership}</p>
               </div>
-            )}
-            {localStrategy.estimatedValue && (
+            ) : null}
+
+            {localStrategy.estimatedValue ? (
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
-                  <DollarSign className="w-3 h-3" />
-                  Valor Estimado
+                <h4 className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase text-muted-foreground">
+                  <DollarSign className="h-3 w-3" />
+                  Valor estimado
                 </h4>
                 <p className="text-sm text-gray-700">{localStrategy.estimatedValue}</p>
               </div>
-            )}
+            ) : null}
           </div>
 
-          {/* Talking Points */}
-          {localStrategy.talkingPoints && localStrategy.talkingPoints.length > 0 && (
+          {localStrategy.talkingPoints && localStrategy.talkingPoints.length > 0 ? (
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
-                Pontos-Chave
+              <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                Pontos-chave
               </h4>
               <ul className="space-y-1.5">
-                {localStrategy.talkingPoints.map((point, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                    <span className="w-5 h-5 rounded-full bg-[#6C63FF]/10 text-[#6C63FF] text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {i + 1}
+                {localStrategy.talkingPoints.map((point, index) => (
+                  <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
+                    <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#6C63FF]/10 text-xs text-[#6C63FF]">
+                      {index + 1}
                     </span>
                     {point}
                   </li>
                 ))}
               </ul>
             </div>
-          )}
+          ) : null}
 
           <Separator />
 
-          {/* Outreach Email */}
-          {(localStrategy.subject || localStrategy.outreachMessage) && (
+          {localStrategy.subject || localStrategy.outreachMessage ? (
             <div>
-              <h4 className="text-sm font-semibold text-[#1A1A2E] mb-3 flex items-center gap-1.5">
-                <MessageSquare className="w-4 h-4 text-[#6C63FF]" />
-                Mensagem de Prospecção
+              <h4 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-[#1A1A2E]">
+                <MessageSquare className="h-4 w-4 text-[#6C63FF]" />
+                Mensagem de prospeccao
               </h4>
-              {localStrategy.subject && (
+
+              {localStrategy.subject ? (
                 <div className="mb-2">
                   <span className="text-xs font-medium text-muted-foreground">Assunto: </span>
                   <span className="text-sm font-medium">{localStrategy.subject}</span>
                 </div>
-              )}
-              {localStrategy.outreachMessage && (
-                <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed border">
+              ) : null}
+
+              {localStrategy.outreachMessage ? (
+                <div className="whitespace-pre-wrap rounded-lg border bg-gray-50 p-4 text-sm leading-relaxed text-gray-700">
                   {localStrategy.outreachMessage}
                 </div>
-              )}
+              ) : null}
             </div>
-          )}
+          ) : null}
 
-          {!localStrategy.strategy && !loading && (
-            <div className="text-center py-6 text-muted-foreground">
-              <p className="text-sm">Estratégia ainda não gerada.</p>
+          {!localStrategy.strategy && !loading ? (
+            <div className="py-6 text-center text-muted-foreground">
+              <p className="text-sm">Estrategia ainda nao gerada.</p>
             </div>
-          )}
+          ) : null}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={handleRegenerate} disabled={loading}>
               {loading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
+                <RefreshCw className="mr-2 h-4 w-4" />
               )}
               Regenerar
             </Button>

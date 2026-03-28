@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,12 +9,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2, ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase-browser"
+import {
+  buildTrackedClientPath,
+  getClientMarketingAttribution,
+  type MarketingAttribution,
+} from "@/lib/marketing-attribution"
 
 export default function ForgotPasswordPage() {
   const { toast } = useToast()
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
+  const [attribution, setAttribution] = useState<MarketingAttribution>({})
+
+  useEffect(() => {
+    setAttribution(getClientMarketingAttribution())
+  }, [])
+
+  const withTracking = (pathname: string) => buildTrackedClientPath(pathname, attribution)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -22,7 +34,7 @@ export default function ForgotPasswordPage() {
     try {
       const supabase = createClient()
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}${withTracking("/reset-password")}`,
       })
       if (error) {
         toast({ title: error.message, variant: "destructive" })
@@ -38,15 +50,20 @@ export default function ForgotPasswordPage() {
     return (
       <Card className="border-0 shadow-2xl">
         <CardContent className="p-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+            <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h3 className="font-bold text-lg mb-2">E-mail enviado!</h3>
-          <p className="text-sm text-muted-foreground mb-4">Verifique sua caixa de entrada para o link de redefinição.</p>
-          <Link href="/login">
-            <Button variant="outline" className="gap-2"><ArrowLeft className="w-4 h-4" />Voltar ao login</Button>
+          <h3 className="mb-2 text-lg font-bold">E-mail enviado!</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Verifique sua caixa de entrada para o link de redefinicao.
+          </p>
+          <Link href={withTracking("/login")}>
+            <Button variant="outline" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao login
+            </Button>
           </Link>
         </CardContent>
       </Card>
@@ -63,15 +80,33 @@ export default function ForgotPasswordPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@exemplo.com" required />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="voce@exemplo.com"
+              required
+            />
           </div>
           <Button type="submit" className="w-full bg-[#6C63FF] hover:bg-[#6C63FF]/90" disabled={loading}>
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando...</> : "Enviar link de reset"}
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Enviando...
+              </>
+            ) : (
+              "Enviar link de reset"
+            )}
           </Button>
         </form>
-        <p className="text-center mt-4">
-          <Link href="/login" className="text-sm text-[#6C63FF] hover:underline flex items-center justify-center gap-1">
-            <ArrowLeft className="w-3 h-3" /> Voltar ao login
+        <p className="mt-4 text-center">
+          <Link
+            href={withTracking("/login")}
+            className="flex items-center justify-center gap-1 text-sm text-[#6C63FF] hover:underline"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Voltar ao login
           </Link>
         </p>
       </CardContent>

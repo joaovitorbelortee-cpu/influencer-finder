@@ -48,7 +48,7 @@ export async function generateInfluencerStrategy(
   const { influencer, search } = params
   const openrouter = getOpenRouter()
 
-  const prompt = `Analise este influenciador e gere uma estratégia de parceria completa:
+  const prompt = `Analise este influenciador e gere uma estrategia de parceria completa:
 
 INFLUENCIADOR:
 - Username: @${influencer.username}
@@ -59,46 +59,44 @@ INFLUENCIADOR:
 - Categoria: ${influencer.category || influencer.tier}
 - Tier: ${influencer.tier}
 
-PRODUTO/SERVIÇO:
+PRODUTO/SERVICO:
 - Nome: ${search.product_name}
-- Descrição: ${search.product_description}
+- Descricao: ${search.product_description}
 - Link: ${search.product_link || "N/A"}
-- Faixa de preço: ${search.price_range || "N/A"}
+- Faixa de preco: ${search.price_range || "N/A"}
 - Nicho alvo: ${search.niche}
 - Tom: ${search.tone}
-- Tipos de parceria: ${search.partnership_types.join(", ") || "Flexível"}
-- Orçamento: ${search.budget || "A combinar"}
+- Tipos de parceria: ${search.partnership_types.join(", ") || "Flexivel"}
+- Orcamento: ${search.budget || "A combinar"}
 
-Retorne um JSON válido com exatamente esta estrutura:
+Retorne um JSON valido com exatamente esta estrutura:
 {
-  "strategy": "Análise estratégica detalhada de 2-3 parágrafos explicando por que este influenciador é adequado e como abordar a parceria",
-  "outreach_subject": "Assunto do email de prospecção (máximo 60 caracteres)",
+  "strategy": "Analise estrategica detalhada de 2-3 paragrafos explicando por que este influenciador e adequado e como abordar a parceria",
+  "outreach_subject": "Assunto do email de prospeccao (maximo 60 caracteres)",
   "outreach_message": "Mensagem de email completa e personalizada em tom ${search.tone}, pronta para enviar",
-  "partnership_suggestion": "Tipo específico de parceria recomendada e como estruturá-la",
+  "partnership_suggestion": "Tipo especifico de parceria recomendada e como estrutura-la",
   "estimated_value": "Valor estimado do post/parceria em reais com justificativa",
   "key_talking_points": ["ponto 1", "ponto 2", "ponto 3", "ponto 4", "ponto 5"]
 }`
 
-  // Best free models on OpenRouter — tries in order of preference
   const FREE_MODELS = [
-    "google/gemini-2.0-flash-exp:free",       // Google Gemini 2.0 Flash (rápido e capaz)
-    "deepseek/deepseek-r1:free",              // DeepSeek R1 (excelente raciocínio)
-    "meta-llama/llama-4-maverick:free",       // Llama 4 Maverick
-    "google/gemma-3-27b-it:free",             // Gemma 3 27B
-    "microsoft/phi-4:free",                   // Phi-4
+    "google/gemini-2.0-flash-exp:free",
+    "deepseek/deepseek-r1:free",
+    "meta-llama/llama-4-maverick:free",
+    "google/gemma-3-27b-it:free",
+    "microsoft/phi-4:free",
   ]
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const completion = await (openrouter.chat.completions.create as any)({
     model: FREE_MODELS[0],
     max_tokens: 2000,
-    models: FREE_MODELS,    // fallback automático para os próximos se o 1º falhar
+    models: FREE_MODELS,
     route: "fallback",
     messages: [
       {
         role: "system",
         content:
-          "Você é um estrategista de marketing de influência especializado no mercado brasileiro. Sempre responda em português brasileiro. Retorne apenas JSON válido, sem markdown ou texto adicional.",
+          "Voce e um estrategista de marketing de influencia especializado no mercado brasileiro. Sempre responda em portugues brasileiro. Retorne apenas JSON valido, sem markdown ou texto adicional.",
       },
       { role: "user", content: prompt },
     ],

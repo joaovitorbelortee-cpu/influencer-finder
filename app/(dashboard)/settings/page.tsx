@@ -3,6 +3,7 @@ import { getUser } from "@/lib/supabase"
 import { prisma } from "@/lib/prisma"
 import { SettingsClient } from "./settings-client"
 import { PLAN_LIMITS } from "@/lib/constants"
+import { getResolvedPaidPlans } from "@/lib/billing"
 
 export default async function SettingsPage() {
   const user = await getUser()
@@ -26,6 +27,7 @@ export default async function SettingsPage() {
         stripeCustomerId: dbUser.stripe_customer_id,
       }}
       limits={limits}
+      paidPlans={getResolvedPaidPlans()}
     />
   )
 }

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { getUser } from "@/lib/supabase"
 import { prisma } from "@/lib/prisma"
 import { PLAN_LIMITS } from "@/lib/constants"
-import { processSearchDirect } from "@/lib/jobs/process-search-direct"
-import { z } from "zod"
 
 const schema = z.object({
   niche: z.string().min(1).max(100),
@@ -22,24 +21,28 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   const user = await getUser()
-  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  if (!user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+  }
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } })
-  if (!dbUser) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
+  if (!dbUser) {
+    return NextResponse.json({ error: "Usuario nao encontrado" }, { status: 404 })
+  }
 
   const plan = dbUser.plan as "FREE" | "PRO" | "BUSINESS"
   const limits = PLAN_LIMITS[plan]
 
   if (limits.searches !== Infinity && dbUser.searches_used >= limits.searches) {
     return NextResponse.json(
-      { error: "Limite de buscas do plano atingido. Faça upgrade para continuar." },
+      { error: "Limite de buscas do plano atingido. Faca upgrade para continuar." },
       { status: 403 }
     )
   }
 
   try {
-    const body = await req.json()
-    const data = schema.parse(body)
+    const payload = await req.json()
+    const data = schema.parse(payload)
 
     const search = await prisma.search.create({
       data: {
@@ -60,28 +63,30 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Process search in background (fire-and-forget)
-    // Don't await - return immediately so user sees the search was created
-    processSearchDirect(search.id).catch((err) => {
-      console.error("Background search processing error:", err)
-    })
-
     return NextResponse.json({ id: search.id }, { status: 201 })
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: "Dados inválidos", details: err.errors }, { status: 422 })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Dados invalidos", details: error.errors },
+        { status: 422 }
+      )
     }
-    console.error("Search creation error:", err)
+
+    console.error("Search creation error:", error)
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })
   }
 }
 
 export async function GET() {
   const user = await getUser()
-  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  if (!user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+  }
 
   const dbUser = await prisma.user.findUnique({ where: { email: user.email! } })
-  if (!dbUser) return NextResponse.json({ error: "Não encontrado" }, { status: 404 })
+  if (!dbUser) {
+    return NextResponse.json({ error: "Nao encontrado" }, { status: 404 })
+  }
 
   const searches = await prisma.search.findMany({
     where: { user_id: dbUser.id },

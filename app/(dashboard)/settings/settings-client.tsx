@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2, Crown, Check } from "lucide-react"
-import { PLAN_LIMITS } from "@/lib/constants"
+import { buildTrackedClientPath, getClientMarketingAttribution, type MarketingAttribution } from "@/lib/marketing-attribution"
 
 interface UserInfo {
   id: string
@@ -20,41 +20,50 @@ interface UserInfo {
   stripeCustomerId: string | null
 }
 
+interface PaidPlan {
+  key: "PRO" | "BUSINESS"
+  label: string
+  priceWithCadence: string
+  features: string[]
+  priceId: string
+  highlighted?: boolean
+}
+
 interface Props {
   user: UserInfo
   limits: { searches: number; results: number; emails: number; export: boolean }
+  paidPlans: PaidPlan[]
 }
 
-const PLANS = [
-  {
-    key: "FREE",
-    label: "Gratuito",
-    price: "R$0/mês",
-    features: ["3 buscas/mês", "10 resultados/busca", "Sem envio de e-mail", "Sem exportação"],
-  },
-  {
-    key: "PRO",
-    label: "Pro",
-    price: "R$97/mês",
-    priceId: "price_pro_monthly",
-    features: ["30 buscas/mês", "30 resultados/busca", "10 e-mails/mês", "Exportação CSV"],
-    highlighted: true,
-  },
-  {
-    key: "BUSINESS",
-    label: "Business",
-    price: "R$297/mês",
-    priceId: "price_business_monthly",
-    features: ["Buscas ilimitadas", "50 resultados/busca", "100 e-mails/mês", "Exportação CSV", "Suporte prioritário"],
-  },
-]
+const FREE_PLAN = {
+  key: "FREE",
+  label: "Gratuito",
+  priceWithCadence: "R$0/mes",
+  features: [
+    "3 buscas/mes",
+    "10 resultados/busca",
+    "Sem envio de email",
+    "Sem exportacao",
+  ],
+}
 
-export function SettingsClient({ user, limits }: Props) {
+function isPaidPlan(plan: typeof FREE_PLAN | PaidPlan): plan is PaidPlan {
+  return "priceId" in plan
+}
+
+export function SettingsClient({ user, limits, paidPlans }: Props) {
   const { toast } = useToast()
   const [name, setName] = useState(user.name)
   const [saving, setSaving] = useState(false)
   const [upgrading, setUpgrading] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [attribution, setAttribution] = useState<MarketingAttribution>({})
+
+  const plans = [FREE_PLAN, ...paidPlans]
+
+  useEffect(() => {
+    setAttribution(getClientMarketingAttribution())
+  }, [])
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault()
@@ -81,11 +90,14 @@ export function SettingsClient({ user, limits }: Props) {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ priceId, attribution }),
       })
       const data = await res.json()
-      if (data.url) window.location.href = data.url
-      else toast({ title: "Erro ao iniciar checkout", variant: "destructive" })
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        toast({ title: "Erro ao iniciar checkout", variant: "destructive" })
+      }
     } finally {
       setUpgrading(null)
     }
@@ -96,25 +108,27 @@ export function SettingsClient({ user, limits }: Props) {
     try {
       const res = await fetch("/api/billing/portal", { method: "POST" })
       const data = await res.json()
-      if (data.url) window.location.href = data.url
-      else toast({ title: "Erro ao acessar portal", variant: "destructive" })
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        toast({ title: "Erro ao acessar portal", variant: "destructive" })
+      }
     } finally {
       setPortalLoading(false)
     }
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1A1A2E]">Configurações</h1>
+        <h1 className="text-2xl font-bold text-[#1A1A2E]">Configuracoes</h1>
         <p className="text-sm text-muted-foreground">Gerencie sua conta e assinatura</p>
       </div>
 
-      {/* Profile */}
       <Card>
         <CardHeader>
           <CardTitle>Perfil</CardTitle>
-          <CardDescription>Atualize suas informações pessoais</CardDescription>
+          <CardDescription>Atualize suas informacoes pessoais</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSaveProfile} className="space-y-4">
@@ -125,89 +139,117 @@ export function SettingsClient({ user, limits }: Props) {
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
               <Input id="email" value={user.email} disabled className="bg-gray-50" />
-              <p className="text-xs text-muted-foreground">O e-mail não pode ser alterado</p>
+              <p className="text-xs text-muted-foreground">O e-mail nao pode ser alterado</p>
             </div>
             <Button type="submit" disabled={saving} className="bg-[#6C63FF] hover:bg-[#6C63FF]/90">
-              {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Salvar alterações"}
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar alteracoes"
+              )}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {/* Plan Usage */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Crown className="w-5 h-5 text-[#6C63FF]" />
-            Plano Atual: <span className="text-[#6C63FF]">{user.plan}</span>
+            <Crown className="h-5 w-5 text-[#6C63FF]" />
+            Plano atual: <span className="text-[#6C63FF]">{user.plan}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
-              { label: "Buscas usadas", value: `${user.searchesUsed}/${limits.searches === Infinity ? "∞" : limits.searches}` },
-              { label: "E-mails enviados", value: `${user.emailsSent}/${limits.emails === 0 ? "0" : limits.emails}` },
-              { label: "Export CSV", value: limits.export ? "✓" : "✗" },
+              {
+                label: "Buscas usadas",
+                value: `${user.searchesUsed}/${limits.searches === Infinity ? "inf" : limits.searches}`,
+              },
+              {
+                label: "Emails enviados",
+                value: `${user.emailsSent}/${limits.emails === 0 ? "0" : limits.emails}`,
+              },
+              { label: "Export CSV", value: limits.export ? "sim" : "nao" },
               { label: "Resultado/busca", value: limits.results },
             ].map((item) => (
-              <div key={item.label} className="text-center p-3 rounded-lg bg-gray-50">
+              <div key={item.label} className="rounded-lg bg-gray-50 p-3 text-center">
                 <p className="text-lg font-bold text-[#1A1A2E]">{item.value}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{item.label}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{item.label}</p>
               </div>
             ))}
           </div>
-          {user.plan !== "FREE" && (
+          {user.plan !== "FREE" ? (
             <Button variant="outline" onClick={handlePortal} disabled={portalLoading}>
-              {portalLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Gerenciar Assinatura
+              {portalLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Gerenciar assinatura
             </Button>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
-      {/* Plans */}
       <Card>
         <CardHeader>
           <CardTitle>Planos</CardTitle>
-          <CardDescription>Escolha o plano ideal para sua operação</CardDescription>
+          <CardDescription>Escolha o plano ideal para sua operacao</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {PLANS.map((plan) => {
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {plans.map((plan) => {
               const isCurrent = plan.key === user.plan
+              const checkoutHref = buildTrackedClientPath("/signup", attribution)
+
               return (
                 <div
                   key={plan.key}
-                  className={`rounded-xl border-2 p-5 relative ${
-                    plan.highlighted ? "border-[#6C63FF]" : isCurrent ? "border-green-400" : "border-gray-200"
+                  className={`relative rounded-xl border-2 p-5 ${
+                    "highlighted" in plan && plan.highlighted
+                      ? "border-[#6C63FF]"
+                      : isCurrent
+                        ? "border-green-400"
+                        : "border-gray-200"
                   }`}
                 >
-                  {plan.highlighted && (
+                  {"highlighted" in plan && plan.highlighted ? (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-[#6C63FF] text-white text-xs font-semibold px-3 py-1 rounded-full">Popular</span>
+                      <span className="rounded-full bg-[#6C63FF] px-3 py-1 text-xs font-semibold text-white">
+                        Popular
+                      </span>
                     </div>
-                  )}
+                  ) : null}
+
                   <h3 className="font-bold text-[#1A1A2E]">{plan.label}</h3>
-                  <p className="text-2xl font-bold mt-1 mb-3">{plan.price}</p>
-                  <ul className="space-y-1.5 mb-4">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                        {f}
+                  <p className="mb-3 mt-1 text-2xl font-bold">{plan.priceWithCadence}</p>
+
+                  <ul className="mb-4 space-y-1.5">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-center gap-1.5 text-sm text-gray-600">
+                        <Check className="h-3.5 w-3.5 flex-shrink-0 text-green-500" />
+                        {feature}
                       </li>
                     ))}
                   </ul>
+
                   {isCurrent ? (
-                    <Button variant="outline" className="w-full" disabled>Plano atual</Button>
-                  ) : plan.key !== "FREE" && plan.priceId ? (
+                    <Button variant="outline" className="w-full" disabled>
+                      Plano atual
+                    </Button>
+                  ) : isPaidPlan(plan) ? (
                     <Button
                       className="w-full bg-[#6C63FF] hover:bg-[#6C63FF]/90"
-                      onClick={() => handleUpgrade(plan.priceId!)}
-                      disabled={!!upgrading}
+                      onClick={() => handleUpgrade(plan.priceId)}
+                      disabled={Boolean(upgrading)}
                     >
-                      {upgrading === plan.priceId ? <Loader2 className="w-4 h-4 animate-spin" /> : "Assinar"}
+                      {upgrading === plan.priceId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assinar"}
                     </Button>
-                  ) : null}
+                  ) : (
+                    <Button asChild variant="outline" className="w-full">
+                      <a href={checkoutHref}>Criar conta</a>
+                    </Button>
+                  )}
                 </div>
               )
             })}
@@ -217,17 +259,16 @@ export function SettingsClient({ user, limits }: Props) {
 
       <Separator />
 
-      {/* Danger zone */}
       <Card className="border-red-200">
         <CardHeader>
-          <CardTitle className="text-red-600">Zona de Perigo</CardTitle>
+          <CardTitle className="text-red-600">Zona de perigo</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-3">
-            A exclusão da conta é permanente e remove todos os seus dados.
+          <p className="mb-3 text-sm text-muted-foreground">
+            A exclusao da conta e permanente e remove todos os seus dados.
           </p>
           <Button variant="outline" className="border-red-300 text-red-500 hover:bg-red-50">
-            Excluir Conta
+            Excluir conta
           </Button>
         </CardContent>
       </Card>

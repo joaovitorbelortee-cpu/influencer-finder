@@ -3,14 +3,28 @@ import { createMiddlewareClient } from "@/lib/supabase"
 
 const publicRoutes = ["/login", "/signup", "/forgot-password", "/reset-password"]
 
-export async function middleware(request: NextRequest) {
-  const { supabase, supabaseResponse } = createMiddlewareClient(request)
-  const { data: { user } } = await supabase.auth.getUser()
+function isSupabaseConfigured() {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
+}
 
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  const isPublic = publicRoutes.some((r) => pathname.startsWith(r))
+  const isPublic =
+    pathname === "/" || publicRoutes.some((route) => pathname.startsWith(route))
   const isApi = pathname.startsWith("/api")
   const isWebhook = pathname.startsWith("/api/webhooks")
+
+  if (!isSupabaseConfigured()) {
+    return NextResponse.next()
+  }
+
+  const { supabase, supabaseResponse } = createMiddlewareClient(request)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (isWebhook || isApi) return supabaseResponse
 
@@ -26,5 +40,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 }

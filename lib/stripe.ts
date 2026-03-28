@@ -1,8 +1,9 @@
 import Stripe from "stripe"
+import { getPriceIdForPlan } from "@/lib/billing"
 
 export const STRIPE_PLANS = {
-  PRO: process.env.STRIPE_PRO_PRICE_ID || "price_pro_monthly",
-  BUSINESS: process.env.STRIPE_BUSINESS_PRICE_ID || "price_business_monthly",
+  PRO: getPriceIdForPlan("PRO"),
+  BUSINESS: getPriceIdForPlan("BUSINESS"),
 }
 
 function getStripe() {
@@ -49,16 +50,37 @@ export async function createOrRetrieveCustomer(params: {
   email: string
   name: string
   userId: string
+  metadata?: Record<string, string>
 }) {
   const s = getStripe()
   const existing = await s.customers.search({
     query: `email:'${params.email}'`,
   })
-  if (existing.data.length > 0) return existing.data[0]
+
+  const metadata = {
+    userId: params.userId,
+    ...params.metadata,
+  }
+
+  if (existing.data.length > 0) {
+    const customer = existing.data[0]
+
+    if (Object.keys(metadata).length > 0) {
+      await s.customers.update(customer.id, {
+        metadata: {
+          ...customer.metadata,
+          ...metadata,
+        },
+      })
+    }
+
+    return customer
+  }
+
   return s.customers.create({
     email: params.email,
     name: params.name,
-    metadata: { userId: params.userId },
+    metadata,
   })
 }
 
