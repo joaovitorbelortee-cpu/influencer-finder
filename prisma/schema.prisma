@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+enum Tier {
+  MICRO
+  MID
+  MACRO
+}
+
+enum SearchStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+enum OutreachStatus {
+  PENDING
+  SENT
+  REPLIED
+  SKIPPED
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  name               String
+  plan               Plan     @default(FREE)
+  stripe_customer_id String?
+  searches_used      Int      @default(0)
+  emails_sent        Int      @default(0)
+  created_at         DateTime @default(now())
+  searches           Search[]
+
+  @@map("users")
+}
+
+model Search {
+  id                  String       @id @default(uuid())
+  user_id             String
+  user                User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  niche               String
+  product_name        String
+  product_description String
+  product_link        String?
+  price_range         String?
+  keywords            String[]     @default([])
+  tier                Tier
+  include_adjacent    Boolean      @default(false)
+  tone                String       @default("Profissional")
+  partnership_types   String[]     @default([])
+  budget              String?
+  auto_send_email     Boolean      @default(false)
+  status              SearchStatus @default(PENDING)
+  results_count       Int          @default(0)
+  error_message       String?
+  created_at          DateTime     @default(now())
+  results             SearchResult[]
+
+  @@map("searches")
+}
+
+model Influencer {
+  id                   String   @id @default(uuid())
+  instagram_username   String   @unique
+  full_name            String?
+  profile_pic_url      String?
+  bio                  String?
+  followers_count      Int
+  following_count      Int      @default(0)
+  posts_count          Int      @default(0)
+  engagement_rate      Float
+  avg_likes            Int      @default(0)
+  avg_comments         Int      @default(0)
+  email_from_bio       String?
+  has_business_contact Boolean  @default(false)
+  bio_contact_info     Json?
+  external_link        String?
+  category             String?
+  tier                 Tier
+  last_updated         DateTime @default(now())
+  results              SearchResult[]
+
+  @@map("influencers")
+}
+
+model SearchResult {
+  id                  String         @id @default(uuid())
+  search_id           String
+  search              Search         @relation(fields: [search_id], references: [id], onDelete: Cascade)
+  influencer_id       String
+  influencer          Influencer     @relation(fields: [influencer_id], references: [id])
+  ai_strategy         String?
+  ai_outreach_message String?
+  ai_subject          String?
+  ai_partnership      String?
+  ai_estimated_value  String?
+  ai_talking_points   String[]       @default([])
+  outreach_status     OutreachStatus @default(PENDING)
+  email_sent_at       DateTime?
+  is_favorite         Boolean        @default(false)
+  created_at          DateTime       @default(now())
+
+  @@unique([search_id, influencer_id])
+  @@map("search_results")
+}
