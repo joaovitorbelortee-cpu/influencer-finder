@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation"
 import { Homepage } from "@/components/marketing/homepage"
+
+export const dynamic = "force-dynamic"
 import { getBillingPlansForDisplay } from "@/lib/billing"
 import { MARKETING_FAQS } from "@/lib/marketing"
 import { getUser } from "@/lib/supabase"
