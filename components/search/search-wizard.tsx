@@ -169,6 +169,9 @@ export function SearchWizard({ plan, searchesUsed }: SearchWizardProps) {
                 placeholder="Descreva seu produto, seus benefícios e diferenciais..."
                 rows={4}
               />
+              {productDescription.length > 0 && productDescription.length < 20 && (
+                <p className="text-xs text-destructive">Mínimo de 20 caracteres ({productDescription.length}/20)</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -199,7 +202,7 @@ export function SearchWizard({ plan, searchesUsed }: SearchWizardProps) {
             <div className="flex justify-end pt-2">
               <Button
                 onClick={() => setStep(2)}
-                disabled={!productName || !productDescription}
+                disabled={!productName || productDescription.length < 20}
                 className="bg-[#6C63FF] hover:bg-[#6C63FF]/90"
               >
                 Próximo <ChevronRight className="w-4 h-4 ml-1" />
