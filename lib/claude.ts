@@ -79,18 +79,9 @@ Retorne um JSON valido com exatamente esta estrutura:
   "key_talking_points": ["ponto 1", "ponto 2", "ponto 3", "ponto 4", "ponto 5"]
 }`
 
-  const FREE_MODELS = [
-    "minimax/minimax-m1:extended",
-    "google/gemini-2.0-flash-exp:free",
-    "deepseek/deepseek-r1:free",
-    "meta-llama/llama-4-maverick:free",
-  ]
-
-  const completion = await (openrouter.chat.completions.create as any)({
-    model: FREE_MODELS[0],
+  const completion = await openrouter.chat.completions.create({
+    model: "openrouter/free",
     max_tokens: 2000,
-    models: FREE_MODELS,
-    route: "fallback",
     messages: [
       {
         role: "system",
@@ -101,15 +92,12 @@ Retorne um JSON valido com exatamente esta estrutura:
     ],
   })
 
-  const text = completion.choices[0]?.message?.content || ""
+  const msg = completion.choices[0]?.message
+  const text = msg?.content || (msg as any)?.reasoning || ""
 
-  try {
-    return JSON.parse(text.trim()) as AIStrategy
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/)
-    if (match) {
-      return JSON.parse(match[0]) as AIStrategy
-    }
-    throw new Error("Failed to parse AI response as JSON")
-  }
+  if (!text) throw new Error("Empty response from AI")
+
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error("No JSON found in AI response")
+  return JSON.parse(match[0]) as AIStrategy
 }
