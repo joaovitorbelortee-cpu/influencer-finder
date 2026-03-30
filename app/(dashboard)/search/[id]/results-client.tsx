@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { InfluencerCard, type InfluencerCardData } from "@/components/influencer/influencer-card"
 import { formatDate, getTierLabel } from "@/lib/utils"
-import { Download, Plus, Search, Loader2, CheckCircle, XCircle, Clock } from "lucide-react"
+import { Download, Plus, Search, Loader2, CheckCircle, XCircle, Clock, Mail } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
 interface SearchInfo {
@@ -104,6 +104,17 @@ export function SearchResultsClient({ search, initialResults }: SearchResultsCli
     return () => clearInterval(interval)
   }, [isProcessing, poll])
 
+  function handleSendAll() {
+    const withEmail = filtered.filter((r) => r.emailFromBio)
+    if (withEmail.length === 0) {
+      toast({ title: "Nenhum influenciador com e-mail nos resultados filtrados", variant: "destructive" })
+      return
+    }
+    const emails = withEmail.map((r) => r.emailFromBio).join(",")
+    const subject = encodeURIComponent(`Proposta de parceria - ${search.productName}`)
+    window.open(`mailto:${encodeURIComponent(emails)}?subject=${subject}`, "_blank")
+  }
+
   async function handleExport() {
     try {
       const res = await fetch(`/api/searches/${search.id}/export`)
@@ -148,7 +159,11 @@ export function SearchResultsClient({ search, initialResults }: SearchResultsCli
             <StatusBadge status={status} />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={handleSendAll} disabled={status !== "DONE"}>
+            <Mail className="w-4 h-4 mr-1.5" />
+            Enviar para todos
+          </Button>
           <Button variant="outline" size="sm" onClick={handleExport} disabled={status !== "DONE"}>
             <Download className="w-4 h-4 mr-1.5" />
             Exportar CSV

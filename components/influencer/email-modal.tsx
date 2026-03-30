@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Loader2, Send } from "lucide-react"
+import { Loader2, Send, Sparkles, ExternalLink } from "lucide-react"
 import { useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -28,7 +28,7 @@ interface EmailModalProps {
 export function EmailModal({
   open,
   onClose,
-  resultId,
+  resultId: _resultId,
   influencerName,
   recipientEmail,
   defaultSubject,
@@ -36,32 +36,43 @@ export function EmailModal({
 }: EmailModalProps) {
   const [subject, setSubject] = useState(defaultSubject || `Proposta de parceria - @${influencerName}`)
   const [body, setBody] = useState(defaultBody || "")
-  const [sending, setSending] = useState(false)
+  const [improving, setImproving] = useState(false)
   const { toast } = useToast()
 
-  async function handleSend() {
+  function handleOpenMailto() {
     if (!subject.trim() || !body.trim()) {
       toast({ title: "Preencha o assunto e a mensagem", variant: "destructive" })
       return
     }
-    setSending(true)
+    const mailto = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    window.open(mailto, "_blank")
+    onClose()
+  }
+
+  async function handleImproveWithAI() {
+    if (!body.trim()) {
+      toast({ title: "Escreva uma mensagem antes de melhorar com IA", variant: "destructive" })
+      return
+    }
+    setImproving(true)
     try {
-      const res = await fetch(`/api/search-results/${resultId}/send-email`, {
+      const res = await fetch("/api/improve-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body }),
+        body: JSON.stringify({ subject, body, influencerName }),
       })
       if (res.ok) {
-        toast({ title: "E-mail enviado com sucesso!" })
-        onClose()
-      } else {
         const data = await res.json()
-        toast({ title: data.error || "Erro ao enviar e-mail", variant: "destructive" })
+        if (data.subject) setSubject(data.subject)
+        if (data.body) setBody(data.body)
+        toast({ title: "Mensagem melhorada com IA!" })
+      } else {
+        toast({ title: "Erro ao melhorar com IA", variant: "destructive" })
       }
     } catch {
-      toast({ title: "Erro ao enviar e-mail", variant: "destructive" })
+      toast({ title: "Erro ao melhorar com IA", variant: "destructive" })
     } finally {
-      setSending(false)
+      setImproving(false)
     }
   }
 
@@ -92,7 +103,23 @@ export function EmailModal({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="body">Mensagem</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="body">Mensagem</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleImproveWithAI}
+                disabled={improving}
+                className="h-7 text-xs text-[#6C63FF] hover:text-[#6C63FF] hover:bg-[#6C63FF]/10"
+              >
+                {improving ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3 h-3 mr-1" />
+                )}
+                Melhorar com IA
+              </Button>
+            </div>
             <Textarea
               id="body"
               value={body}
@@ -107,16 +134,11 @@ export function EmailModal({
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button
-            onClick={handleSend}
-            disabled={sending}
+            onClick={handleOpenMailto}
             className="bg-[#6C63FF] hover:bg-[#6C63FF]/90"
           >
-            {sending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 mr-2" />
-            )}
-            Enviar
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Abrir no E-mail
           </Button>
         </DialogFooter>
       </DialogContent>
