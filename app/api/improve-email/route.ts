@@ -39,9 +39,9 @@ JSON de resposta:`
     if (!res.ok) return NextResponse.json({ error: "Erro na API de IA" }, { status: 500 })
 
     const data = await res.json()
-    const content = data.choices?.[0]?.message?.content || ""
+    const msg = data.choices?.[0]?.message
+    const content = msg?.content || msg?.reasoning || ""
 
-    // Extract JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/)
     if (!jsonMatch) return NextResponse.json({ error: "Resposta inválida da IA" }, { status: 500 })
 
