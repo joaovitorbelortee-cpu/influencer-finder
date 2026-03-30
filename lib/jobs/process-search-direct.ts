@@ -183,7 +183,8 @@ export async function processSearchDirect(searchId: string) {
 
         let posts: any[] = []
         if (influencers.length < 8) {
-          posts = await getUserPosts(candidate.username)
+          // Pass pk (user_id) to avoid a redundant profile API call
+          posts = await getUserPosts(userInfo.pk || candidate.username)
         }
 
         const engagementRate =
