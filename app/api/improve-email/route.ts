@@ -30,7 +30,7 @@ JSON de resposta:`
         "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://influencer-finder-five.vercel.app",
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.1-8b-instruct:free",
+        model: "minimax/minimax-m1:extended",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 1000,
       }),

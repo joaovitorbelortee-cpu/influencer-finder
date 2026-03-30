@@ -80,11 +80,10 @@ Retorne um JSON valido com exatamente esta estrutura:
 }`
 
   const FREE_MODELS = [
+    "minimax/minimax-m1:extended",
     "google/gemini-2.0-flash-exp:free",
     "deepseek/deepseek-r1:free",
     "meta-llama/llama-4-maverick:free",
-    "google/gemma-3-27b-it:free",
-    "microsoft/phi-4:free",
   ]
 
   const completion = await (openrouter.chat.completions.create as any)({
