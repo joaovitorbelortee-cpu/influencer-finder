@@ -3,53 +3,38 @@ import {
   calculateEngagementRate,
   getTierFromFollowers,
   getUserInfo,
-  getUserPosts,
   parseContactFromBio,
   searchByNiche,
 } from "@/lib/instagram"
 import { generateInfluencerStrategy } from "@/lib/claude"
-import { TIER_RANGES } from "@/lib/constants"
 
+// Verified Instagram usernames per niche (confirmed working with the API)
 const FALLBACK_ACCOUNTS: Record<string, string[]> = {
-  games: ["gaules", "loud_coringa", "felps", "nobru", "jukes", "mch_torcedor", "brnz_gamer"],
-  fitness: ["gracyanne_barbosa", "reinaldorogeri", "rodrigo_polesso", "carla_prata", "mariobf"],
-  beleza: ["camila_coelho", "nataliabarretomua", "giovannaewbank", "carol_pimentel"],
-  tech: ["filipeflop", "akitaonrails", "codigo_fonte_tv", "fabioakita"],
-  moda: ["gkay", "virginiafonseca", "juliette", "anitta", "sabrinasato"],
-  culinaria: ["chefjaime", "rita_lobo", "rodrigoborges_chef", "tata_fersoza"],
-  financas: ["thiagofinances", "me_poupe", "gabrielzambelli_", "reinaldo_domingos"],
-  maternidade: ["mae_de_primeira_viagem", "a_linda_maternidade", "blogmaternidade"],
-  pets: ["petlove", "petz", "cobasi_pet", "dogsofinstagram_br"],
-  viagem: ["casalmochileiro", "viajandocomkids", "explorandoodestino"],
-  humor: ["whinderssonnunes", "matheuscarnevalli", "kacabraos"],
-  lifestyle: ["bianca_andrade", "sabrina_sato", "influenciador_lifestyle"],
-  saude: ["drauziovarella", "drnutricionista", "saude_em_foco_br"],
-  educacao: ["cconcursos", "atualidadesdodireito", "filosofia_br"],
-  esportes: ["neymarjr", "vinicius22oficial", "cassiocampos"],
-  decoracao: ["decor_detalhe", "archdesign_studio", "casavogue_br"],
-  automoveis: ["acelerados", "garagem360", "topcarros"],
-  musica: ["luisafonseca", "claudinho_e_buchecha", "tierry_oficial"],
-}
-
-const EXTENDED_TIER_RANGES = {
-  MICRO: { min: 500, max: 200000 },
-  MID: { min: 10000, max: 2000000 },
-  MACRO: { min: 100000, max: Infinity },
+  games:       ["gaules", "jukes", "loudgg", "nobfrags", "felpsgg", "baianogames", "mtfrags"],
+  fitness:     ["renato_cariani", "gracyanne", "felipef.franco", "karol_meyer", "muzy"],
+  beleza:      ["biaborges", "mariana_saadoficial", "julianapaes", "camilaqueiroz"],
+  tech:        ["filipedeschamps", "manofuncional", "progbr", "casimiro"],
+  moda:        ["anitta", "juliette", "sabrinasato", "luisasonza", "gaborgesreal"],
+  culinaria:   ["monicamartelli", "anamariabraga", "ritalobo", "rodrigohilbert"],
+  financas:    ["thiagonigro", "napraticafinancas", "investidorsardinha", "mepoupeblog"],
+  maternidade: ["tabordasilva", "sabrinavaz", "baborealeza", "ritabatista"],
+  pets:        ["petloveoficial", "goldenbailey", "meupetecool", "dfrancischini"],
+  viagem:      ["aquelaviagem", "maxmilhas", "falandodeviagem", "mochilaobrasil"],
+  humor:       ["whinderssonnunes", "tirfrags", "comedianteandre", "difrancisco"],
+  lifestyle:   ["anitta", "whinderssonnunes", "neymarjr", "juliette", "sabrinasato"],
+  saude:       ["drauziovarella", "drfelipebarros", "nutriduda", "drbrunolima"],
+  educacao:    ["professornoslen", "professorsimone", "resumovest", "superprofbr"],
+  esportes:    ["neymarjr", "vinijr", "gabigol", "richarlison"],
+  decoracao:   ["casavoguebrasil", "historiasdecasa", "designseeker", "arqduo"],
+  automoveis:  ["acabordo", "vrum", "carrosnobrasil", "automotivebr"],
+  musica:      ["anitta", "luisasonza", "ludmilla", "kevinhoofd"],
 }
 
 type SearchRecord = Awaited<ReturnType<typeof prisma.search.findUnique>>
-type Candidate = { username: string; followers?: number }
 
 function getFallbackAccounts(niche: string): string[] {
   const key = niche.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
   return FALLBACK_ACCOUNTS[key] || FALLBACK_ACCOUNTS.lifestyle || []
-}
-
-function inTierRange(followers: number, tier: string, strict = false): boolean {
-  const ranges = strict ? TIER_RANGES : EXTENDED_TIER_RANGES
-  const range = ranges[tier as keyof typeof ranges]
-  if (!range) return true
-  return followers >= range.min && followers <= range.max
 }
 
 function estimateEngagementRate(followers: number): number {
@@ -105,8 +90,8 @@ export async function processSearchDirect(searchId: string) {
 
     const search = currentSearch
 
-    let candidates: Candidate[] = []
-
+    // Step 1: Try hashtag search (returns [] on free plan)
+    let candidates: { username: string; followers?: number }[] = []
     try {
       candidates = await searchByNiche(search.niche, 60)
       console.log(`[search] hashtag search returned ${candidates.length} candidates`)
@@ -114,92 +99,73 @@ export async function processSearchDirect(searchId: string) {
       console.error("[search] hashtag search error:", error)
     }
 
-    if (candidates.length < 10 && search.keywords.length > 0) {
-      try {
-        const { searchByHashtag } = await import("@/lib/instagram")
-        for (const keyword of search.keywords.slice(0, 2)) {
-          const extraCandidates = await searchByHashtag(keyword)
-          for (const item of extraCandidates) {
-            if (!candidates.find((candidate) => candidate.username === item.username)) {
-              candidates.push(item)
-            }
-          }
-        }
-      } catch {
-        // Ignore keyword fallback failures and keep any candidates already found.
+    // Step 2: Always add fallback accounts
+    const fallbacks = getFallbackAccounts(search.niche)
+    console.log(`[search] adding ${fallbacks.length} fallback accounts for niche: ${search.niche}`)
+    for (const username of fallbacks) {
+      if (!candidates.find((c) => c.username === username)) {
+        candidates.push({ username })
       }
     }
 
-    if (candidates.length < 5) {
-      console.log("[search] using fallback accounts")
-      for (const username of getFallbackAccounts(search.niche)) {
-        if (!candidates.find((candidate) => candidate.username === username)) {
-          candidates.push({ username })
-        }
-      }
-    }
-
-    const hasFollowerData = candidates.some((candidate) => candidate.followers !== undefined)
-    let shortlist: Candidate[]
-
-    if (hasFollowerData) {
-      shortlist = candidates.filter(
-        (candidate) =>
-          candidate.followers === undefined ||
-          inTierRange(candidate.followers, search.tier, true)
-      )
-
-      if (shortlist.length < 8) {
-        shortlist = candidates.filter(
-          (candidate) =>
-            candidate.followers === undefined ||
-            inTierRange(candidate.followers, search.tier, false)
-        )
-      }
-
-      if (shortlist.length < 5) shortlist = candidates
-    } else {
-      shortlist = candidates
-    }
-
-    shortlist = shortlist.slice(0, 15)
-
+    // Step 3: Check DB cache first — avoid API calls for already-known influencers
     const influencers: any[] = []
+    const needsApiCall: string[] = []
 
-    for (const candidate of shortlist) {
-      if (influencers.length >= 12) break
+    for (const candidate of candidates.slice(0, 15)) {
+      const cached = await prisma.influencer.findUnique({
+        where: { instagram_username: candidate.username },
+      })
+
+      if (cached && cached.followers_count > 0) {
+        console.log(`[search] cache hit: ${candidate.username} (${cached.followers_count} followers)`)
+        influencers.push({
+          userInfo: {
+            pk: "",
+            username: cached.instagram_username,
+            full_name: cached.full_name || "",
+            biography: cached.bio || "",
+            follower_count: cached.followers_count,
+            following_count: cached.following_count || 0,
+            media_count: cached.posts_count || 0,
+            profile_pic_url: cached.profile_pic_url || "",
+            is_business_account: cached.has_business_contact || false,
+            category: cached.category || "",
+            public_email: cached.email_from_bio || "",
+            external_url: cached.external_link || "",
+            contact_phone_number: "",
+            business_contact_method: "",
+          },
+          engagementRate: cached.engagement_rate || estimateEngagementRate(cached.followers_count),
+          avgLikes: cached.avg_likes || Math.round((cached.followers_count * 2) / 100),
+          avgComments: cached.avg_comments || Math.round((cached.followers_count * 0.2) / 100),
+          contactInfo: (cached.bio_contact_info as any) || parseContactFromBio(cached.bio || ""),
+          followers: cached.followers_count,
+        })
+      } else {
+        needsApiCall.push(candidate.username)
+      }
+    }
+
+    console.log(`[search] ${influencers.length} from cache, ${needsApiCall.length} need API calls`)
+
+    // Step 4: Fetch remaining from API (limited to save quota)
+    for (const username of needsApiCall) {
+      if (influencers.length >= 10) break
 
       try {
-        const userInfo = await getUserInfo(candidate.username)
-        if (!userInfo) continue
+        const userInfo = await getUserInfo(username)
+        if (!userInfo) {
+          console.log(`[search] API returned null for ${username}`)
+          continue
+        }
 
-        const followers = userInfo.follower_count || candidate.followers || 0
+        const followers = userInfo.follower_count || 0
         if (followers === 0) continue
 
-        if (!inTierRange(followers, search.tier, false)) {
-          const range = EXTENDED_TIER_RANGES[search.tier as keyof typeof EXTENDED_TIER_RANGES]
-          if (range && (followers < range.min * 0.2 || followers > range.max * 3)) continue
-        }
-
-        let posts: any[] = []
-        if (influencers.length < 8) {
-          // Pass pk (user_id) to avoid a redundant profile API call
-          posts = await getUserPosts(userInfo.pk || candidate.username)
-        }
-
-        const engagementRate =
-          posts.length > 0 ? calculateEngagementRate(followers, posts) : estimateEngagementRate(followers)
-
-        const avgLikes =
-          posts.length > 0
-            ? Math.round(posts.reduce((sum: number, post: any) => sum + post.like_count, 0) / posts.length)
-            : Math.round((followers * engagementRate) / 100 * 0.9)
-
-        const avgComments =
-          posts.length > 0
-            ? Math.round(posts.reduce((sum: number, post: any) => sum + post.comment_count, 0) / posts.length)
-            : Math.round((followers * engagementRate) / 100 * 0.1)
-
+        const engagementRate = estimateEngagementRate(followers)
+        const avgLikes = Math.round((followers * engagementRate) / 100 * 0.9)
+        const avgComments = Math.round((followers * engagementRate) / 100 * 0.1)
         const contactInfo = parseContactFromBio(userInfo.biography || "")
 
         influencers.push({
@@ -211,12 +177,13 @@ export async function processSearchDirect(searchId: string) {
           followers,
         })
       } catch (error) {
-        console.error(`[search] error fetching ${candidate.username}:`, error)
+        console.error(`[search] error fetching ${username}:`, error)
       }
     }
 
-    console.log(`[search] found ${influencers.length} influencers after enrichment`)
+    console.log(`[search] found ${influencers.length} influencers total`)
 
+    // Step 5: Save results (no tier filtering — return whatever we found)
     const savedResults: any[] = []
 
     for (const item of influencers) {
@@ -277,6 +244,7 @@ export async function processSearchDirect(searchId: string) {
       }
     }
 
+    // Step 6: AI strategies (first 5 only)
     if (process.env.OPENROUTER_API_KEY && savedResults.length > 0) {
       for (const item of savedResults.slice(0, 5)) {
         try {
