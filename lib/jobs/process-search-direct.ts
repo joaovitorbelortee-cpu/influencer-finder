@@ -288,13 +288,14 @@ export async function processSearchDirect(searchId: string) {
     }
 
     const search = currentSearch
+    const maxResults = (search as any).max_results ?? 10
     const seeds = getSeedInfluencers(search.niche, search.tier)
-    console.log(`[search] using ${seeds.length} seed influencers for niche: ${search.niche}, tier: ${search.tier}`)
+    console.log(`[search] using ${seeds.length} seed influencers for niche: ${search.niche}, tier: ${search.tier}, max: ${maxResults}`)
 
     const savedResults: any[] = []
 
     for (const seed of seeds) {
-      if (savedResults.length >= 10) break
+      if (savedResults.length >= maxResults) break
 
       const engagementRate = estimateEngagementRate(seed.followers)
       const avgLikes = Math.round((seed.followers * engagementRate) / 100 * 0.9)

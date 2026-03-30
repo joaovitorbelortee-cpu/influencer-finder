@@ -64,6 +64,7 @@ model Search {
   partnership_types   String[]     @default([])
   budget              String?
   auto_send_email     Boolean      @default(false)
+  max_results         Int          @default(10)
   status              SearchStatus @default(PENDING)
   results_count       Int          @default(0)
   error_message       String?

@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/components/ui/use-toast"
 import { NICHES, PARTNERSHIP_TYPES, PRICE_RANGES, TONES, TIER_RANGES, PLAN_LIMITS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
-import { X, Plus, Loader2, ChevronRight, ChevronLeft } from "lucide-react"
+import { X, Plus, Loader2, ChevronRight, ChevronLeft, Users } from "lucide-react"
 
 interface SearchWizardProps {
   plan: "FREE" | "PRO" | "BUSINESS"
@@ -43,6 +43,7 @@ export function SearchWizard({ plan, searchesUsed }: SearchWizardProps) {
   const [partnershipTypes, setPartnershipTypes] = useState<string[]>([])
   const [budget, setBudget] = useState("")
   const [autoSendEmail, setAutoSendEmail] = useState(false)
+  const [maxResults, setMaxResults] = useState(10)
 
   const limits = PLAN_LIMITS[plan]
   const canSearch = limits.searches === Infinity || searchesUsed < limits.searches
@@ -92,6 +93,7 @@ export function SearchWizard({ plan, searchesUsed }: SearchWizardProps) {
           partnership_types: partnershipTypes,
           budget: budget || null,
           auto_send_email: autoSendEmail,
+          max_results: maxResults,
         }),
       })
       if (res.ok) {
@@ -309,6 +311,31 @@ export function SearchWizard({ plan, searchesUsed }: SearchWizardProps) {
               <Label htmlFor="adjacent" className="cursor-pointer text-sm">
                 Incluir tiers adjacentes (maior cobertura)
               </Label>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4" />
+                  Quantidade de influenciadores
+                </Label>
+                <span className="text-sm font-semibold text-[#6C63FF] bg-[#6C63FF]/10 px-2.5 py-0.5 rounded-full">
+                  {maxResults}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={5}
+                max={500}
+                step={5}
+                value={maxResults}
+                onChange={(e) => setMaxResults(Number(e.target.value))}
+                className="w-full accent-[#6C63FF] cursor-pointer"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>5</span>
+                <span>500</span>
+              </div>
             </div>
 
             <div className="flex justify-between pt-2">

@@ -17,6 +17,7 @@ const schema = z.object({
   partnership_types: z.array(z.string()).default([]),
   budget: z.string().optional().nullable(),
   auto_send_email: z.boolean().default(false),
+  max_results: z.number().int().min(5).max(500).default(10),
 })
 
 export async function POST(req: NextRequest) {
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
         partnership_types: data.partnership_types,
         budget: data.budget,
         auto_send_email: data.auto_send_email,
+        max_results: data.max_results,
         status: "PENDING",
       },
     })
